@@ -9,37 +9,30 @@ def getFtpPublishProfile(def publishProfilesJson) {
 
 node {
   withEnv(['AZURE_SUBSCRIPTION_ID=8aec2354-8f53-4303-9b1d-e76ac4f8ba60',
-           'AZURE_TENANT_ID=350e1723-7838-4e4f-9049-ae82b051c09a']) {
+        'AZURE_TENANT_ID=350e1723-7838-4e4f-9049-ae82b051c09a']) {
     stage('init') {
       checkout scm
     }
-
+  
     stage('build') {
       sh 'mvn clean package'
     }
-
+  
     stage('deploy') {
       def resourceGroup = 'jenkins-get-started-rg'
       def webAppName = 'azure-jonny'
-
-      withCredentials([usernamePassword(credentialsId: 'AzureServicePrincipal',
-                                        passwordVariable: 'AZURE_CLIENT_SECRET',
-                                        usernameVariable: 'AZURE_CLIENT_ID')]) {
-        sh '''
-        /usr/bin/az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET -t $AZURE_TENANT_ID
-        /usr/bin/az account set -s $AZURE_SUBSCRIPTION_ID
-        /usr/bin/az webapp deploy --resource-group $resourceGroup --name $webAppName --src-path target/calculator-1.0.war --type war
-        /usr/bin/az logout
+      // login Azure
+      withCredentials([usernamePassword(credentialsId: 'AzureServicePrincipal', passwordVariable: 'AZURE_CLIENT_SECRET', usernameVariable: 'AZURE_CLIENT_ID')]) {
+       sh '''
+          az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET -t $AZURE_TENANT_ID
+          az account set -s $AZURE_SUBSCRIPTION_ID
         '''
       }
-
       // get publish settings
       def pubProfilesJson = sh script: "az webapp deployment list-publishing-profiles -g $resourceGroup -n $webAppName", returnStdout: true
       def ftpProfile = getFtpPublishProfile pubProfilesJson
-
       // upload package
-      sh "az webapp deploy --resource-group jenkins-get-started-rg --name azure-jonny --src-path target/calculator-1.0.war --type war"
-
+      sh "curl -T target/calculator-1.0.war $ftpProfile.url/webapps/ROOT.war -u '$ftpProfile.username:$ftpProfile.password'"
       // log out
       sh 'az logout'
     }
