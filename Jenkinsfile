@@ -8,6 +8,7 @@ def getFtpPublishProfile(def publishProfilesJson) {
 }
 
 node {
+  env.PATH = "/usr/bin:${env.PATH}"
   withEnv(['AZURE_SUBSCRIPTION_ID=8aec2354-8f53-4303-9b1d-e76ac4f8ba60',
         'AZURE_TENANT_ID=350e1723-7838-4e4f-9049-ae82b051c09a']) {
     stage('init') {
